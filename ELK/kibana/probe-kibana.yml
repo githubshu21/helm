@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: probe-kibana
+  namespace: monitoring
+  labels:
+    # 同样，必须带上这个标签
+    release: kube-prometheus-stack
+spec:
+  jobName: kibana-http-probe
+  prober:
+    # 指向你的黑盒服务
+    url: prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115
+  module: http_2xx
+  targets:
+    staticConfig:
+      static:
+      # 探测 Kibana 的内部 Service 地址和端口
+      - http://kibana-kibana.elastic.svc.cluster.local:5601/login

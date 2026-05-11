@@ -1,0 +1,13 @@
+# 开启单节点模式（测试环境）
+replicas: 1
+minimumMasterNodes: 1
+
+# 配置存储卷声明
+volumeClaimTemplate:
+  accessModes: [ "ReadWriteOnce" ]
+  storageClassName: "nfs-csi"  # 👈 核心就在这里：指向我们刚才创建的存储类
+  resources:
+    requests:
+      storage: 10Gi # 你可以根据你的 NFS 空间自行调整大小
+service:
+  type: NodePort

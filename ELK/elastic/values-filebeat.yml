@@ -1,0 +1,34 @@
+# 以 DaemonSet 模式运行（每个节点跑一个，用来抓取该节点上所有 Pod 的日志）
+daemonset:
+  enabled: true
+  filebeatConfig:
+    filebeat.yml: |
+      # 开启 K8s 自动发现机制
+      filebeat.autodiscover:
+        providers:
+          - type: kubernetes
+            node: ${NODE_NAME}
+            hints.enabled: true
+            hints.default_config:
+              type: container
+              # 自动读取 Docker/Containerd 映射在宿主机上的日志文件
+              paths:
+                - /var/log/containers/*${data.kubernetes.container.id}.log
+
+      # 增加一些 Kubernetes 相关的元数据（比如 Namespace, Pod 名字等），方便在 Kibana 里搜索
+      processors:
+        - add_kubernetes_metadata:
+            host: ${NODE_NAME}
+            matchers:
+            - logs_path:
+                logs_path: "/var/log/containers/"
+
+      # 发送目标：直接发给你的 Elasticsearch
+      output.elasticsearch:
+        # 指向你集群内部的 ES 服务地址（必须用 https）
+        hosts: ["https://elasticsearch-master.elastic.svc.cluster.local:9200"]
+        username: "elastic"
+        # 【极其重要】把这里替换为你之前在终端通过命令提取出（或重置出）的真实密码！
+        password: "fnGkso26HnbfNzS3"
+        # 忽略自签名证书的校验
+        ssl.verification_mode: "none"

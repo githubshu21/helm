@@ -1,0 +1,12 @@
+es:
+  # 替换为你真实的 ES 密码
+  uri: "https://elastic:fnGkso26HnbfNzS3@elasticsearch-master.elastic.svc.cluster.local:9200"
+  # 忽略自签名证书的校验
+  sslSkipVerify: true
+
+serviceMonitor:
+  # 开启 ServiceMonitor，让 Prometheus Operator 自动发现它
+  enabled: true
+  # 【极其重要】必须带上这个标签，否则 Prometheus 不会抓取！
+  labels:
+    release: kube-prometheus-stack
