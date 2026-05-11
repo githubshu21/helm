@@ -1,0 +1,15 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-csi  # 这是存储类的名字，后面创建 PVC 时要用到
+provisioner: nfs.csi.k8s.io  # 必须填这个驱动名称
+parameters:
+  server: 192.168.50.1      # 【请修改】你的 NFS 服务器 IP
+  share: /data           # 【请修改】你的 NFS 共享目录
+  # 下面的参数是可选的
+  # subDir: ${pvc.metadata.namespace}-${pvc.metadata.name} # 动态创建子目录的命名规则
+reclaimPolicy: Delete        # PV 回收策略：Delete (删除 PVC 时删除数据) 或 Retain (保留数据)
+volumeBindingMode: Immediate
+mountOptions:
+  - hard
+  - nfsvers=4.1              # 推荐使用 NFS 4.1，如果老旧服务器不支持可改为 3
