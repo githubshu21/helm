@@ -1,0 +1,92 @@
+# ==========================================
+# 1. Grafana 配置
+# ==========================================
+grafana:
+  service:
+    type: NodePort
+    nodePort: 32000
+
+# ==========================================
+# 2. Prometheus 配置
+# ==========================================
+prometheus:
+  service:
+    type: NodePort
+    nodePort: 32001
+  prometheusSpec:
+    # 额外附加的 Alertmanager 列表
+    additionalAlertManagerConfigs:
+      - static_configs:
+          - targets: ['10.110.93.204:9093']
+        api_version: v2
+
+# ==========================================
+# 3. Alertmanager 配置
+# ==========================================
+alertmanager:
+  service:
+    type: NodePort
+    nodePort: 32002
+  
+  # 【修复重点】：config 必须缩进到 alertmanager 下面
+  config:
+    global:
+      # QQ邮箱的 SMTP 服务器地址和端口（465 是 SSL 端口）
+      smtp_smarthost: 'smtp.qq.com:465'
+      # 用于发送告警信息的人邮箱（必须与你的认证账号一致）
+      smtp_from: '2693659108@qq.com'
+      # 认证用户名
+      smtp_auth_username: '2693659108@qq.com'
+      # 【极其重要】这里千万不要填你的QQ密码！必须填入获取到的 16 位“SMTP 授权码”
+      smtp_auth_password: 'sjqirdcepgmvdghd'
+      # 因为 465 端口直接走 SSL 加密，所以把 STARTTLS 关掉，否则会报错
+      smtp_require_tls: false
+
+    # 【修复重点】：route 必须缩进到 config 下面
+    route:
+      # --- 根路由配置 (默认兜底) ---
+      group_by: ['alertname', 'instance']
+      group_wait: 10s
+      group_interval: 5m
+      repeat_interval: 1h
+      # 默认接收器：如果没有匹配到下方的子路由，则统一发送邮件
+      receiver: 'qq_email_receiver'
+
+      # --- 子路由树 (Routes) ---
+      routes:
+        # 案例 1：将级别为 critical（严重）的告警路由给钉钉
+        - receiver: 'dingtalk_receiver'
+          matchers:
+            - severity="critical"  # 匹配条件：只要告警带有 severity=critical 标签
+          # 子路由可以覆盖根路由的配置，比如严重告警改为每10分钟重复提醒一次
+          repeat_interval: 10m
+          continue: false          # false 表示匹配到此路由后停止往下匹配（不发邮件了）
+
+        # 案例 2：将归属 backend（后端）团队的告警路由给企业微信
+        - receiver: 'wechat_receiver'
+          matchers:
+            - team="backend"       # 匹配条件：只要告警带有 team=backend 标签
+            
+    # 【修复重点】：receivers 必须缩进到 config 下面
+    receivers:
+      # 1. qq邮件接收器
+      - name: 'qq_email_receiver'
+        email_configs:
+          - to: '2693659108@qq.com'
+            send_resolved: true
+
+      # 2. 钉钉接收器案例
+      # 注意：Alertmanager 通常通过 Webhook 将数据发给第三方钉钉适配器
+      - name: 'dingtalk_receiver'
+        webhook_configs:
+          - url: 'http://dingtalk-webhook-adapter:8060/dingtalk/my_robot/send'
+            send_resolved: true
+
+      # 3. 企业微信接收器案例
+      # 注意：Alertmanager 原生支持企业微信，填入你的自建应用信息即可
+      - name: 'wechat_receiver'
+        wechat_configs:
+          - to_party: '1'                   # 接收告警的微信部门ID
+            agent_id: '1000002'             # 企业微信自建应用的 AgentId
+            corp_secret: '你的企业微信应用Secret' # 企业微信自建应用的 Secret
+            send_resolved: true
